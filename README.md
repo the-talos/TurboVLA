@@ -118,7 +118,7 @@ pip install -e .
 
 The policy picks XPU first, then CUDA, then CPU. To select a card explicitly, build the policy with `device="xpu:0"`. The LIBERO evaluation command above is unchanged, and `flash_attention_2` requests fall back to `sdpa` when CUDA is not present.
 
-Training, the multi-GPU launch scripts and `flash-attn` stay CUDA-only.
+`flash-attn` stays CUDA-only.
 
 ---
 
