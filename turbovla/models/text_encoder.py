@@ -8,6 +8,7 @@ import torch
 from torch import nn
 from transformers import AutoModel, AutoTokenizer
 
+from ..device import resolve_attention_implementation
 from ..text.bert import BertModelWarper, generate_masks_with_special_tokens
 from .configuration import TextEncoderConfig
 
@@ -17,15 +18,16 @@ def _load_pretrained_model(config: TextEncoderConfig):
         "local_files_only": config.local_files_only,
         "trust_remote_code": False,
     }
-    if config.attention_implementation:
+    attention_implementation = resolve_attention_implementation(config.attention_implementation)
+    if attention_implementation:
         try:
             return AutoModel.from_pretrained(
                 config.model_name_or_path,
-                attn_implementation=config.attention_implementation,
+                attn_implementation=attention_implementation,
                 **kwargs,
             )
         except Exception as error:
-            if config.attention_implementation == "flash_attention_2":
+            if attention_implementation == "flash_attention_2":
                 try:
                     return AutoModel.from_pretrained(
                         config.model_name_or_path,
@@ -35,7 +37,7 @@ def _load_pretrained_model(config: TextEncoderConfig):
                 except Exception:
                     pass
             print(
-                f"[TurboVLA] text attention backend {config.attention_implementation!r} unavailable; "
+                f"[TurboVLA] text attention backend {attention_implementation!r} unavailable; "
                 f"using model default ({type(error).__name__}).",
                 flush=True,
             )

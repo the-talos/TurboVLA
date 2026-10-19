@@ -18,6 +18,8 @@ import numpy as np
 from PIL import Image
 import torch
 
+from ..device import resolve_device, seed_accelerators
+
 
 EXPECTED_IMAGE_SIZE = 256
 DINO_PATCH_SIZE = 16
@@ -100,8 +102,7 @@ def set_seed_everywhere(seed: int) -> None:
     random.seed(seed)
     np.random.seed(seed)
     torch.manual_seed(seed)
-    if torch.cuda.is_available():
-        torch.cuda.manual_seed_all(seed)
+    seed_accelerators(seed)
 
 
 def load_preprocessor_config(local_model_path: str) -> dict[str, Any]:
@@ -364,7 +365,7 @@ class TurboVLAPolicy:
         self.ckpt_path = str(ckpt_path)
         self.dinov3_path = str(dinov3_path)
         self.bert_path = str(bert_path)
-        self.device = torch.device(device or ("cuda" if torch.cuda.is_available() else "cpu"))
+        self.device = resolve_device(device)
         self.chunk_size = int(chunk_size)
         self.action_dim = int(action_dim)
         self.precision = str(precision).lower()

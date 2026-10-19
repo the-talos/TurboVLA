@@ -6,6 +6,7 @@ from typing import Any, Mapping, Sequence
 import torch
 from torch import nn
 
+from ..device import autocast_device_type
 from .action_head import TurboVLAActionHead
 from .components.fusion import BiAttentionBlock
 from .components.transformer import TransformerEncoderLayer
@@ -181,8 +182,9 @@ class TurboVLA(nn.Module):
         pixel_values = self._normalize_samples(samples)
         device = pixel_values.device
         precision_context = nullcontext()
-        if self.config.interaction.compute_precision == "bf16_autocast" and device.type == "cuda":
-            precision_context = torch.autocast(device_type="cuda", dtype=torch.bfloat16)
+        autocast_type = autocast_device_type(device)
+        if self.config.interaction.compute_precision == "bf16_autocast" and autocast_type:
+            precision_context = torch.autocast(device_type=autocast_type, dtype=torch.bfloat16)
         with precision_context:
             text_tokens, text_key_padding_mask, text_self_attention_masks = self.text_encoder(
                 instructions,

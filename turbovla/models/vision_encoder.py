@@ -6,6 +6,7 @@ import torch
 from torch import nn
 from transformers import AutoModel
 
+from ..device import autocast_device_type, resolve_attention_implementation
 from .configuration import VisionEncoderConfig
 
 
@@ -14,15 +15,16 @@ def _load_pretrained_model(config: VisionEncoderConfig):
         "local_files_only": config.local_files_only,
         "trust_remote_code": False,
     }
-    if config.attention_implementation:
+    attention_implementation = resolve_attention_implementation(config.attention_implementation)
+    if attention_implementation:
         try:
             return AutoModel.from_pretrained(
                 config.model_name_or_path,
-                attn_implementation=config.attention_implementation,
+                attn_implementation=attention_implementation,
                 **kwargs,
             )
         except Exception as error:
-            if config.attention_implementation == "flash_attention_2":
+            if attention_implementation == "flash_attention_2":
                 try:
                     return AutoModel.from_pretrained(
                         config.model_name_or_path,
@@ -32,7 +34,7 @@ def _load_pretrained_model(config: VisionEncoderConfig):
                 except Exception:
                     pass
             print(
-                f"[TurboVLA] vision attention backend {config.attention_implementation!r} unavailable; "
+                f"[TurboVLA] vision attention backend {attention_implementation!r} unavailable; "
                 f"using model default ({type(error).__name__}).",
                 flush=True,
             )
@@ -100,8 +102,9 @@ class DINOv3VisionEncoder(nn.Module):
         if precision == "bf16":
             pixel_values = pixel_values.to(dtype=torch.bfloat16)
         autocast_context = nullcontext()
-        if precision == "bf16_autocast" and pixel_values.device.type == "cuda":
-            autocast_context = torch.autocast(device_type="cuda", dtype=torch.bfloat16)
+        autocast_type = autocast_device_type(pixel_values.device)
+        if precision == "bf16_autocast" and autocast_type:
+            autocast_context = torch.autocast(device_type=autocast_type, dtype=torch.bfloat16)
 
         grad_context = torch.no_grad() if self.config.frozen else nullcontext()
         with grad_context:

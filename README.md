@@ -107,6 +107,19 @@ pip install flash-attn==2.7.4.post1 --no-build-isolation
 
 Install the [RoboTwin 2.0](https://github.com/robotwin-Platform/RoboTwin) simulator in a separate evaluation environment when required by your setup.
 
+### How to run the same on Intel's XPU
+
+Inference runs on Intel GPUs through PyTorch's `xpu` device. Skip the CUDA `pip install torch==2.3.1 ...` line above and install an XPU build instead (the `transformers` pin in `pyproject.toml` still applies):
+
+```bash
+pip install torch torchvision --index-url https://download.pytorch.org/whl/xpu
+pip install -e .
+```
+
+The policy picks XPU first, then CUDA, then CPU. To select a card explicitly, build the policy with `device="xpu:0"`. The LIBERO evaluation command above is unchanged, and `flash_attention_2` requests fall back to `sdpa` when CUDA is not present.
+
+Training, the multi-GPU launch scripts and `flash-attn` stay CUDA-only.
+
 ---
 
 ## 📦 Dataset and Model Preparation
